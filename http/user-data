@@ -1,0 +1,25 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US
+  keyboard:
+    layout: us
+  ssh:
+    install-server: true
+    allow-pw: true
+  identity:
+    hostname: ubuntu-server
+    username: ubuntu
+    password: "$6$UrmZ4rka1FgTlY.o$Yds.bSh3L3GdhcvTS6kMmltO3.94pQMf/v.AojXwruQbGAfSkJp.FaOlzHg7evdIuho7M3Jq1RBzR89VnEsCi."
+  storage:
+    layout:
+      name: direct
+  user-data:
+    packages:
+      - qemu-guest-agent
+    package_update: true
+    package_upgrade: false
+    timezone: UTC
+    runcmd:
+      - systemctl enable qemu-guest-agent
+      - systemctl start qemu-guest-agent

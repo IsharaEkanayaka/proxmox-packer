@@ -1,0 +1,13 @@
+# --- Secrets---
+*.pkrvars.hcl
+*.auto.pkrvars.hcl
+
+# --- Packer Temporary Files ---
+.packer_plugins/
+packer_cache/
+output-*/
+*.iso
+
+# --- System Files ---
+.DS_Store
+Thumbs.db
