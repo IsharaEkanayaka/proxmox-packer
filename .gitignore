@@ -1,12 +1,29 @@
 # --- Secrets---
-*.pkrvars.hcl
-*.auto.pkrvars.hcl
+packer/*.pkrvars.hcl
+packer/*.auto.pkrvars.hcl
 
 # --- Packer Temporary Files ---
 .packer_plugins/
 packer_cache/
 output-*/
 *.iso
+
+# --- Terraform ---
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+terraform/.terraform.tfstate.lock.info
+terraform/crash.log
+terraform/tfplan
+
+# --- General ---
+.DS_Store
+*.swp
+*.swo
+*~
 
 # --- System Files ---
 .DS_Store

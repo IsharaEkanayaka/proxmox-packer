@@ -1,0 +1,19 @@
+# Copy this file to terraform.tfvars and fill in your values
+# OR create a terraform.auto.tfvars file
+
+proxmox_api_url          = "https://your-proxmox-host:8006/api2/json"
+proxmox_api_token_id     = "your-token-id"
+proxmox_api_token_secret = "your-token-secret"
+
+# VM Configuration
+vm_count       = 2
+vm_name_prefix = "ubuntu-vm"
+vm_cores       = 2
+vm_memory      = 2048
+vm_disk_size   = "20G"
+
+# Optional: Change defaults if needed
+# target_node    = "pve1"
+# template_id    = 990
+# vm_storage     = "local-lvm"
+# network_bridge = "vmbr0"
