@@ -96,7 +96,8 @@ source "proxmox-iso" "ubuntu-server" {
 
   ssh_username = "ubuntu"
   ssh_password = "ubuntu"
-  ssh_timeout  = "20m"
+  ssh_timeout  = "30m"
+  ssh_handshake_attempts = 100
 
   # --- Bastion Host Settings ---
   # This tells Packer: "To reach the VM, go through Tesla first"

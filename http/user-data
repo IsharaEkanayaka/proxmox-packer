@@ -4,6 +4,12 @@ autoinstall:
   locale: en_US
   keyboard:
     layout: us
+  network:
+    network:
+      version: 2
+      ethernets:
+        ens18:
+          dhcp4: true
   ssh:
     install-server: true
     allow-pw: true
@@ -14,12 +20,19 @@ autoinstall:
   storage:
     layout:
       name: direct
+  late-commands:
+    - echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/ubuntu
+    - curtin in-target --target=/target -- chmod 440 /etc/sudoers.d/ubuntu
   user-data:
+    disable_root: false
     packages:
       - qemu-guest-agent
+      - openssh-server
     package_update: true
     package_upgrade: false
     timezone: UTC
     runcmd:
+      - systemctl enable ssh
+      - systemctl start ssh
       - systemctl enable qemu-guest-agent
       - systemctl start qemu-guest-agent
