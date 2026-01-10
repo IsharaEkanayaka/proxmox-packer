@@ -110,4 +110,16 @@ source "proxmox-iso" "ubuntu-server" {
 
 build {
   sources = ["source.proxmox-iso.ubuntu-server"]
+
+  provisioner "shell" {
+    inline = [
+      "echo '⚠️ Resetting machine-id for unique DHCP leases...'",
+      
+      # We use 'tee' because it works with sudo pipes (simple redirection > fails)
+      "echo -n | sudo tee /etc/machine-id",
+      
+      "sudo rm -f /var/lib/dbus/machine-id",
+      "sudo rm -f /etc/netplan/99-config.yaml"
+    ]
+  }
 }
