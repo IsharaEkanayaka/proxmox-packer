@@ -1,118 +1,127 @@
-# Terraform - Deploy VMs from Packer Template
+# Terraform — VM Provisioning
 
-This Terraform configuration deploys Ubuntu VMs from the Packer template created in the parent directory.
+Deploys Ubuntu VMs from the Packer template (ID 990) with static IP addresses via cloud-init.
 
 ## Prerequisites
 
-1. Template created with Packer (ID: 990)
-2. Terraform installed
+1. Template built with Packer (VM ID 990)
+2. Terraform >= 1.0
 3. Proxmox API credentials
 
 ## Quick Start
 
-### 1. Initialize Terraform
+### 1. Initialize
 
 ```bash
 cd terraform
 terraform init
 ```
 
-### 2. Configure Variables
+### 2. Configure
 
-Create `terraform.tfvars` from the example:
-
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars` with your values:
+Create `terraform.tfvars`:
 
 ```hcl
-proxmox_api_url          = "https://your-proxmox-host:8006/api2/json"
-proxmox_api_token_id     = "your-token-id"
+proxmox_api_url          = "https://10.40.19.230:8006/api2/json"
+proxmox_api_token_id     = "packer@pam!setup"
 proxmox_api_token_secret = "your-token-secret"
 
-vm_count       = 2
-vm_name_prefix = "ubuntu-vm"
+vm_count       = 3
+vm_name_prefix = "k8s-node"
+vm_cores       = 2
+vm_memory      = 2048
 ```
 
-### 3. Plan and Apply
+### 3. Deploy
 
 ```bash
-# Preview changes
 terraform plan
-
-# Create VMs
 terraform apply
-
-# Or auto-approve
-terraform apply -auto-approve
 ```
 
-### 4. Get VM Information
+### 4. Get VM Info
 
 ```bash
-# Show all outputs
 terraform output
-
-# Show specific output
 terraform output vm_ip_addresses
 ```
 
-### 5. Destroy VMs
+### 5. Destroy
 
 ```bash
 terraform destroy
 ```
 
-## Configuration Options
+## Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `vm_count` | Number of VMs to create | 1 |
-| `vm_name_prefix` | Prefix for VM names | ubuntu-vm |
-| `vm_cores` | CPU cores per VM | 2 |
-| `vm_memory` | Memory in MB | 2048 |
-| `vm_disk_size` | Disk size | 20G |
-| `template_id` | Template ID to clone | 990 |
-| `target_node` | Proxmox node | pve1 |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `proxmox_api_url` | — | Proxmox API endpoint |
+| `proxmox_api_token_id` | — | API token ID |
+| `proxmox_api_token_secret` | — | API token secret |
+| `vm_count` | `1` | Number of VMs to create |
+| `vm_name_prefix` | `ubuntu-vm` | VM name prefix (produces `prefix-1`, `prefix-2`, ...) |
+| `vm_cores` | `2` | CPU cores per VM |
+| `vm_memory` | `2048` | Memory in MB per VM |
+| `vm_ip_prefix` | `10.40.19.` | Network prefix for static IPs |
+| `vm_ip_start` | `201` | Starting last octet |
+| `vm_ip_gateway` | `10.40.19.254` | Gateway address |
+| `vm_dns_server` | `10.40.2.1` | DNS server |
+| `vm_storage` | `local-lvm` | Storage pool for cloud-init drive |
+| `network_bridge` | `vmbr0` | Network bridge |
+| `template_id` | `990` | Template VM ID to clone |
+| `target_node` | `pve1` | Proxmox node |
+| `ssh_user` | `ubuntu` | VM username |
+| `ssh_password` | `ubuntu` | VM password |
+
+## Static IP Assignment
+
+Each VM receives a static IP based on its index:
+
+```
+VM 1: {vm_ip_prefix}{vm_ip_start}/24       → 10.40.19.201/24
+VM 2: {vm_ip_prefix}{vm_ip_start + 1}/24   → 10.40.19.202/24
+VM 3: {vm_ip_prefix}{vm_ip_start + 2}/24   → 10.40.19.203/24
+```
+
+IPs are configured via a Proxmox cloud-init drive (`ide2`) and applied by cloud-init on first boot.
 
 ## Examples
 
-### Create 3 VMs with custom specs
+### Deploy 3 Kubernetes nodes
 
 ```bash
 terraform apply \
   -var="vm_count=3" \
-  -var="vm_cores=4" \
-  -var="vm_memory=4096" \
-  -var="vm_name_prefix=web-server"
+  -var="vm_name_prefix=k8s-node"
 ```
 
-### Create a single VM
+### Deploy a high-spec VM
 
 ```bash
 terraform apply \
   -var="vm_count=1" \
-  -var="vm_name_prefix=database"
+  -var="vm_name_prefix=database" \
+  -var="vm_cores=4" \
+  -var="vm_memory=8192"
 ```
 
 ## File Structure
 
 ```
 terraform/
-├── versions.tf          # Terraform and provider versions
-├── providers.tf         # Proxmox provider configuration
-├── variables.tf         # Variable definitions
-├── main.tf             # VM resource definitions
-├── outputs.tf          # Output definitions
-├── terraform.tfvars.example  # Example variables file
-└── README.md           # This file
+├── main.tf                  # VM resource definitions
+├── variables.tf             # Variable definitions
+├── outputs.tf               # Output definitions (IDs, names, IPs)
+├── providers.tf             # Proxmox provider (bpg/proxmox)
+├── versions.tf              # Provider version constraints
+├── terraform.tfvars         # Your variable values (gitignored)
+└── terraform.tfvars.example # Example variable values
 ```
 
 ## Notes
 
-- VMs are created as full clones of the template
-- DHCP is configured by default
-- QEMU guest agent is enabled
-- SSH keys can be added via the `sshkeys` parameter in main.tf
+- VMs are full clones of the template
+- Disk size (20 GB) is inherited from the template
+- QEMU guest agent is enabled for IP reporting
+- Cloud-init handles static IP, DNS, gateway, and user configuration
