@@ -14,16 +14,6 @@ variable "proxmox_api_token_secret" {
   sensitive = true
 }
 
-variable "ssh_bastion_username" {
-	type    = string
-	default = ""
-}
-
-variable "ssh_bastion_password" {
-  type      = string
-  default   = ""
-  sensitive = true
-}
 
 packer {
   required_plugins {
@@ -98,14 +88,6 @@ source "proxmox-iso" "ubuntu-server" {
   ssh_password = "ubuntu"
   ssh_timeout  = "30m"
   ssh_handshake_attempts = 100
-
-  # --- Bastion Host Settings ---
-  # This tells Packer: "To reach the VM, go through Tesla first"
-  ssh_bastion_host     = "tesla.ce.pdn.ac.lk"
-  ssh_bastion_username = var.ssh_bastion_username
-  # If you use a password for Tesla:
-  ssh_bastion_password = var.ssh_bastion_password
-  # If you use an SSH key/agent for Tesla, Packer will use it automatically.
 }
 
 build {
