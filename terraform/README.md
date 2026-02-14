@@ -26,10 +26,14 @@ proxmox_api_url          = "https://10.40.19.230:8006/api2/json"
 proxmox_api_token_id     = "packer@pam!setup"
 proxmox_api_token_secret = "your-token-secret"
 
-vm_count       = 3
-vm_name_prefix = "k8s-node"
-vm_cores       = 2
-vm_memory      = 2048
+control_plane_count = 1
+worker_count        = 2
+vm_name_prefix      = "k8s-node"
+
+cp_cores      = 2
+cp_memory     = 4096
+worker_cores  = 2
+worker_memory = 2048
 ```
 
 ### 3. Deploy
@@ -43,7 +47,8 @@ terraform apply
 
 ```bash
 terraform output
-terraform output vm_ip_addresses
+terraform output control_plane_ips
+terraform output worker_ips
 ```
 
 ### 5. Destroy
@@ -59,10 +64,13 @@ terraform destroy
 | `proxmox_api_url` | — | Proxmox API endpoint |
 | `proxmox_api_token_id` | — | API token ID |
 | `proxmox_api_token_secret` | — | API token secret |
-| `vm_count` | `1` | Number of VMs to create |
-| `vm_name_prefix` | `ubuntu-vm` | VM name prefix (produces `prefix-1`, `prefix-2`, ...) |
-| `vm_cores` | `2` | CPU cores per VM |
-| `vm_memory` | `2048` | Memory in MB per VM |
+| `control_plane_count` | `1` | Number of control plane VMs |
+| `worker_count` | `2` | Number of worker VMs |
+| `vm_name_prefix` | `k8s-node` | VM name prefix (produces `prefix-1`, `prefix-2`, ...) |
+| `cp_cores` | `2` | CPU cores per control plane VM |
+| `cp_memory` | `4096` | Memory in MB per control plane VM |
+| `worker_cores` | `2` | CPU cores per worker VM |
+| `worker_memory` | `2048` | Memory in MB per worker VM |
 | `vm_ip_prefix` | `10.40.19.` | Network prefix for static IPs |
 | `vm_ip_start` | `201` | Starting last octet |
 | `vm_ip_gateway` | `10.40.19.254` | Gateway address |
@@ -76,34 +84,38 @@ terraform destroy
 
 ## Static IP Assignment
 
-Each VM receives a static IP based on its index:
+Control plane nodes are provisioned first, then workers:
 
 ```
-VM 1: {vm_ip_prefix}{vm_ip_start}/24       → 10.40.19.201/24
-VM 2: {vm_ip_prefix}{vm_ip_start + 1}/24   → 10.40.19.202/24
-VM 3: {vm_ip_prefix}{vm_ip_start + 2}/24   → 10.40.19.203/24
+CP 1:     {vm_ip_prefix}{vm_ip_start}/24         → 10.40.19.201/24
+Worker 1: {vm_ip_prefix}{vm_ip_start + 1}/24     → 10.40.19.202/24
+Worker 2: {vm_ip_prefix}{vm_ip_start + 2}/24     → 10.40.19.203/24
 ```
 
 IPs are configured via a Proxmox cloud-init drive (`ide2`) and applied by cloud-init on first boot.
 
 ## Examples
 
-### Deploy 3 Kubernetes nodes
+### Deploy 1 control plane + 3 workers
 
 ```bash
 terraform apply \
-  -var="vm_count=3" \
+  -var="control_plane_count=1" \
+  -var="worker_count=3" \
   -var="vm_name_prefix=k8s-node"
 ```
 
-### Deploy a high-spec VM
+### Deploy a high-spec production cluster
 
 ```bash
 terraform apply \
-  -var="vm_count=1" \
-  -var="vm_name_prefix=database" \
-  -var="vm_cores=4" \
-  -var="vm_memory=8192"
+  -var="control_plane_count=1" \
+  -var="worker_count=3" \
+  -var="vm_name_prefix=prod" \
+  -var="cp_cores=2" \
+  -var="cp_memory=4096" \
+  -var="worker_cores=4" \
+  -var="worker_memory=8192"
 ```
 
 ## File Structure

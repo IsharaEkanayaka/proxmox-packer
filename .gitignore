@@ -24,6 +24,7 @@ terraform/tfplan
 *.swp
 *.swo
 *~
+__pycache__
 
 # --- System Files ---
 .DS_Store

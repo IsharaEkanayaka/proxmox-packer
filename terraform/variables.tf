@@ -26,26 +26,44 @@ variable "target_node" {
   default     = "pve1"
 }
 
-variable "vm_count" {
-  description = "Number of VMs to create"
+variable "control_plane_count" {
+  description = "Number of control plane VMs"
   type        = number
   default     = 1
+}
+
+variable "worker_count" {
+  description = "Number of worker VMs"
+  type        = number
+  default     = 2
 }
 
 variable "vm_name_prefix" {
   description = "Prefix for VM names"
   type        = string
-  default     = "ubuntu-vm"
+  default     = "k8s-node"
 }
 
-variable "vm_cores" {
-  description = "Number of CPU cores per VM"
+variable "cp_cores" {
+  description = "CPU cores per control plane VM"
   type        = number
   default     = 2
 }
 
-variable "vm_memory" {
-  description = "Memory in MB per VM"
+variable "cp_memory" {
+  description = "Memory in MB per control plane VM"
+  type        = number
+  default     = 4096
+}
+
+variable "worker_cores" {
+  description = "CPU cores per worker VM"
+  type        = number
+  default     = 2
+}
+
+variable "worker_memory" {
+  description = "Memory in MB per worker VM"
   type        = number
   default     = 2048
 }

@@ -1,0 +1,26 @@
+---
+# Auto-generated add-ons playbook for cluster: k8s-production
+- name: Install Kubernetes add-ons
+  hosts: control_plane
+  become: false
+  tasks:
+    - name: Install Metrics Server
+      command: kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+
+    - name: Install NGINX Ingress Controller
+      command: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.5/deploy/static/provider/baremetal/deploy.yaml
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+
+    - name: Add Prometheus Helm repo
+      command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+      ignore_errors: true
+
+    - name: Install kube-prometheus-stack
+      command: helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config

@@ -6,11 +6,17 @@ proxmox_api_token_id     = "your-token-id"
 proxmox_api_token_secret = "your-token-secret"
 
 # VM Configuration
-vm_count       = 2
-vm_name_prefix = "ubuntu-vm"
-vm_cores       = 2
-vm_memory      = 2048
-vm_disk_size   = "20G"
+control_plane_count = 1
+worker_count        = 2
+vm_name_prefix      = "k8s-node"
+
+# Control plane sizing
+cp_cores  = 2
+cp_memory = 4096
+
+# Worker sizing
+worker_cores  = 2
+worker_memory = 2048
 
 # Optional: Change defaults if needed
 # target_node    = "pve1"

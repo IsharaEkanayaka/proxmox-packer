@@ -11,6 +11,7 @@ Infrastructure-as-code for Proxmox VE using **Packer** (template creation), **Te
 
 ## Features
 
+- **Intent-Driven Agent** — Describe the cluster you need in plain English and the agent builds it ([details](agent/README.md))
 - **Packer Template Builder** — Automated Ubuntu Server 22.04 template with cloud-init support
 - **Terraform VM Provisioning** — Deploy multiple VMs with static IPs from a single command
 - **Ansible Kubernetes Setup** — Automated kubeadm cluster with 1 control plane + N workers
@@ -21,6 +22,15 @@ Infrastructure-as-code for Proxmox VE using **Packer** (template creation), **Te
 
 ```
 .
+├── agent/                                     # Intent-driven provisioning agent
+│   ├── cli.py                                 # CLI entry point
+│   ├── intent_parser_llm.py                   # LLM-powered intent → ClusterSpec
+│   ├── llm.py                                 # Ollama REST client
+│   ├── proxmox_client.py                      # Proxmox API resource discovery
+│   ├── models.py                              # Data models (ClusterSpec, NodeSpec)
+│   ├── config_generator.py                    # ClusterSpec → config files
+│   ├── orchestrator.py                        # Pipeline runner (Packer→TF→Ansible)
+│   └── README.md                              # Agent documentation
 ├── packer/
 │   ├── ubuntu-server.pkr.hcl          # Packer template configuration
 │   ├── credentials.auto.pkrvars.hcl   # Proxmox API credentials (gitignored)
@@ -50,6 +60,7 @@ Infrastructure-as-code for Proxmox VE using **Packer** (template creation), **Te
 
 ### Software
 
+- [Python](https://www.python.org/downloads/) >= 3.10 (for the agent)
 - [Packer](https://developer.hashicorp.com/packer/downloads) >= 1.10
 - [Terraform](https://www.terraform.io/downloads) >= 1.0
 - [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/) >= 2.12
@@ -65,7 +76,24 @@ Infrastructure-as-code for Proxmox VE using **Packer** (template creation), **Te
 
 ## Quick Start
 
-### 1. Build Template with Packer
+### Option A: Use the Agent (Recommended)
+
+```bash
+# Describe what you need — the agent handles everything
+python -m agent create "production cluster with 5 workers and monitoring"
+
+# Or run interactively
+python -m agent create
+
+# Preview what would be generated
+python -m agent preview "ML cluster with 3 workers, 16GB RAM"
+```
+
+See [agent/README.md](agent/README.md) for full documentation.
+
+### Option B: Manual Setup
+
+#### 1. Build Template with Packer
 
 ```bash
 cd packer
@@ -109,10 +137,14 @@ proxmox_api_url          = "https://10.40.19.230:8006/api2/json"
 proxmox_api_token_id     = "packer@pam!setup"
 proxmox_api_token_secret = "your-token-secret"
 
-vm_count       = 3
-vm_name_prefix = "k8s-node"
-vm_cores       = 2
-vm_memory      = 2048
+control_plane_count = 1
+worker_count        = 2
+vm_name_prefix      = "k8s-node"
+
+cp_cores      = 2
+cp_memory     = 4096
+worker_cores  = 2
+worker_memory = 2048
 ```
 
 Deploy:
@@ -126,8 +158,10 @@ terraform apply
 Example output:
 
 ```
-vm_names        = ["k8s-node-1", "k8s-node-2", "k8s-node-3"]
-vm_ip_addresses = ["10.40.19.201", "10.40.19.202", "10.40.19.203"]
+control_plane_names = ["k8s-node-1"]
+control_plane_ips   = ["10.40.19.201"]
+worker_names        = ["k8s-node-2", "k8s-node-3"]
+worker_ips          = ["10.40.19.202", "10.40.19.203"]
 ```
 
 ### 3. Set Up Kubernetes Cluster with Ansible
@@ -202,10 +236,13 @@ ssh ubuntu@10.40.19.201
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `vm_count` | `1` | Number of VMs to create |
-| `vm_name_prefix` | `ubuntu-vm` | Prefix for VM names (e.g., `k8s-node`) |
-| `vm_cores` | `2` | CPU cores per VM |
-| `vm_memory` | `2048` | Memory in MB per VM |
+| `control_plane_count` | `1` | Number of control plane VMs |
+| `worker_count` | `2` | Number of worker VMs |
+| `vm_name_prefix` | `k8s-node` | Prefix for VM names |
+| `cp_cores` | `2` | CPU cores per control plane VM |
+| `cp_memory` | `4096` | Memory in MB per control plane VM |
+| `worker_cores` | `2` | CPU cores per worker VM |
+| `worker_memory` | `2048` | Memory in MB per worker VM |
 | `vm_ip_prefix` | `10.40.19.` | Network prefix for static IPs |
 | `vm_ip_start` | `201` | Starting last octet (VMs get .201, .202, ...) |
 | `vm_ip_gateway` | `10.40.19.254` | Gateway address |
@@ -219,13 +256,14 @@ ssh ubuntu@10.40.19.201
 
 ### How Static IPs Work
 
-Terraform passes IP configuration to each VM via a Proxmox cloud-init drive (`ide2`). Each VM gets:
+Terraform passes IP configuration to each VM via a Proxmox cloud-init drive (`ide2`). Control plane nodes are provisioned first, then workers:
 
 ```
-IP: {vm_ip_prefix}{vm_ip_start + index}/24
+Control Plane: {vm_ip_prefix}{vm_ip_start + 0..control_plane_count-1}/24
+Workers:       {vm_ip_prefix}{vm_ip_start + control_plane_count + 0..worker_count-1}/24
 ```
 
-For 3 VMs with defaults: `10.40.19.201`, `10.40.19.202`, `10.40.19.203`.
+With defaults (1 CP + 2 workers): `10.40.19.201` (control plane), `10.40.19.202`, `10.40.19.203` (workers).
 
 The Packer template is prepared for this by:
 1. Attaching a cloud-init drive (`cloud_init = true`)
@@ -292,7 +330,7 @@ The Packer template is prepared for this by:
 - **Credentials** — Never commit `credentials.auto.pkrvars.hcl` or `terraform.tfvars`
 - **Template updates** — Rebuild with `packer build -force .`, then `terraform destroy && terraform apply`
 - **Disk size** — VMs inherit the 20 GB disk from the template
-- **IP range** — Default range is `10.40.19.201` to `10.40.19.201 + vm_count - 1`
+- **IP range** — Default range starts at `10.40.19.201` (control plane first, then workers)
 
 ---
 
